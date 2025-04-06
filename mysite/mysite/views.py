@@ -2,6 +2,28 @@ from django.http import HttpResponse
 from django.template import loader
 from django.shortcuts import render, redirect
 import sqlite3
+import hashlib
+import pickle
+
+def hash_password(password):
+    
+    # FLAW 4
+    # Cryptographic Failure
+    # SHA-1 is an insecure algorithm because it's fast to compute,
+    # which means an attacker can try to generate many hashes for
+    # common passwords in order to find a match once they compromise
+    # the database or use a list from the internet of known hashes. 
+    # E.g. I found the password "admin" from a hash of it online.
+    return hashlib.sha1(password.encode()).hexdigest()
+    
+    # FIX 4
+    # Have a strong policy for passwords when registering users.
+    # E.g., don't allow passwords from public repositories of 
+    # popular passwords. Also, use a stronger encryption algorithm,
+    # e.g. sha256 as suggested in this fix:
+    #return hashlib.sha256(data).hexdigest()
+
+
 
 def addView(request):
     first = request.GET.get('first')
@@ -29,6 +51,17 @@ def blogPageView(request):
         #FIX 2
         #Comment last line of code and uncomment the one below:
         #username = request.session['username']
+
+        # FLAW 5
+        # Even if we fix the above flaw, this form is still vulnerable to a so-called replay
+        # attack because of how the logout function on the bottom of this file was implemented.
+        # Currently, the logout button just sets the logged_in value in request.session to False,
+        # but doesn't reset the csrf token or cookie. So if you used this application on a
+        # public computer (haha, who still uses those) then even though you logged out, someone
+        # can copy the csrf token, session and sessionid values, and use a tool such as postman
+        # to edit your blog. It sounds unlikely but I've personally used tools that didn't always
+        # work when you clicked log out (I've noticed it was even happening to Facebook a few 
+        # years ago). For FIX 5 scroll to the bottom of this file to the logout function!
 
         blog = request.POST.get('blog', '')
         print(f"Someone with a username '{username}' rewrote their blog with the following data:")
@@ -68,6 +101,7 @@ def loginPageView(request):
     if request.method == 'POST':
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
+        hashed_password = hash_password(password=password)
         print(username)
         print(password)
         con = sqlite3.connect("bloggify.sqlite")
@@ -77,7 +111,7 @@ def loginPageView(request):
         #SQL INJECTION
         #It's possible to log in e.g. as first user with username equal to ' OR '1'='1' --
         #Or as anyone with a known username or even delete all records
-        query = f"SELECT username, blog FROM Users WHERE username='{username}' AND password='{password}'"
+        query = f"SELECT username, blog FROM Users WHERE username='{username}' AND password='{hashed_password}'"
         res = cur.execute(query)
 
         #FLAW 1 Fix:
@@ -135,12 +169,15 @@ def registerPageView(request):
         #if err:
             #return render(request, 'pages/register.html', {'err':err})
 
+
         print(f"Someone registers with username '{username}' and password {password}.")
+        hashed_password = hash_password(password)
+
         #We should also check if someone with that username already exists... is that another flaw?
         con = sqlite3.connect("bloggify.sqlite")
         cur = con.cursor()
         query = "INSERT INTO users (username,password,blog) VALUES (?,?,?)"
-        res = cur.execute(query, (username,password,""))
+        res = cur.execute(query, (username,hashed_password,""))
         result = res.fetchone()
         request.session["username"] = username
         request.session["logged_in"] = True
@@ -153,10 +190,10 @@ def registerPageView(request):
 def logout(request):
     what_was_there = request.session['items']
     print(f"what_was_there: {what_was_there}")
+    
     request.session['logged_in'] = False
-    #request.session.flush()  # This will remove the session data
-    request.session['items'] = 2
-    #user_logged_in = request.sessions['user_logged_in']
-    #print(f"user_logged_in: {user_logged_in}")
-    #request.sessions['user_logged_in'] = False
+    # FIX 5
+    # Uncomment the below line of code!
+    # This will remove the session data and prevent a replay attack
+    # request.session.flush()  
     return render(request, 'pages/login.html')
