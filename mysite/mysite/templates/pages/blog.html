@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title>This is your blog.</title>
+    </head>
+
+    <body>
+        <h1>Hi {{username}}!</h1>
+        This is your blog: {{blog}}
+    </br></br>
+    <h2>Rewrite your blog!</h2>
+    <form action="/blog/" method="POST">
+        {% csrf_token %}
+        <input type="text" name="blog"/>
+        <input type="hidden" name="username" value="{{ username }}"/>
+        <input type="submit"/>
+    </form>
+    </br></br>
+        <a href="/logout/">Logout</a>
+    </body>
+</html>
