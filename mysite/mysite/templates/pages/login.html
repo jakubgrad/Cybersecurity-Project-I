@@ -6,20 +6,19 @@
 
     <body>
         <h1>Log in!</h1>
-
-        <h2>the login: form</h2>
-        <form action="/add" method="POST">
-            <!-- {% csrf_token %} -->
-            <input type="text" name="username"/>
-            <input type="password" name="password"/>
+        <form action="/login/" method="POST">
+            {% csrf_token %}
+            <input type="text" name="username"/></br>
+            <input type="password" name="password"/></br>
             <input type="submit"/>
         </form>
-
-        <h2>log out? doesnt work yet, should only unset an isloggedin flag.</h2>
+    </br>
         <form action="/logout/" method="POST">
             {% csrf_token %}
-            <input type="submit"/>
+            <input type="submit" value="Logout"/>
         </form>
+    </br>
+        <a href="/register/">Register</a>
 
     </body>
 </html>
