@@ -6,6 +6,7 @@ cd Cybersecurity-Project-I
 source venv/bin/activate
 cd mysite
 python3 manage.py migrate
+python3 initialize_database.py 
 python manage.py runserver
 ```
 The server should be running at localhost:8000.
