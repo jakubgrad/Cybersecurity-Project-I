@@ -21,6 +21,7 @@ from .views import loginPageView, homePageView, blogPageView, registerPageView, 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('home/', homePageView, name='home'),
+    path('', homePageView, name='index'),
     path('blog/', blogPageView, name='blog'),
     path('login/', loginPageView, name='login'),
     path('register/', registerPageView, name='register'),
