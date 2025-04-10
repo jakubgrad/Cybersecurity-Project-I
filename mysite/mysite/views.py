@@ -1,14 +1,14 @@
 from django.http import HttpResponse
 from django.template import loader
 from django.shortcuts import render, redirect
+from django.middleware.csrf import rotate_token
 import sqlite3
 import hashlib
 import pickle
 
 def hash_password(password):
-    
     # FLAW 4
-    # Cryptographic Failure
+    # A02:2021-Cryptographic Failures
     # SHA-1 is an insecure algorithm because it's fast to compute,
     # which means an attacker can try to generate many hashes for
     # common passwords in order to find a match once they compromise
@@ -23,36 +23,21 @@ def hash_password(password):
     # e.g. sha256 as suggested in this fix:
     #return hashlib.sha256(data).hexdigest()
 
-
-
-def addView(request):
-    first = request.GET.get('first')
-    second = request.GET.get('second')
-    return HttpResponse(str(int(first)+int(second)))
-
-def multiplyView(request):
-    return HttpResponse("2")
-    first = request.GET.get('first')
-    second = request.GET.get('second')
-    print(first)
-    return HttpResponse(str(int(first)*int(second)))
-
 def homePageView(request):
-    #template = loader.get_template('pages/index.html')
-    #return HttpResponse(template.render())
-    return render(request, 'pages/index.html', {'username' : 'Kuba'})
+    return render(request, 'pages/home.html')
 
 def blogPageView(request):
-    if request.method == 'POST':
-        
+    if request.method == 'POST':        
         #FLAW 2
+        # A01:2021-Broken Access Control
         #It's possible to rewrite someone else's blog by putting their name in the hidden input in the POST form.
         username = request.POST.get('username', '')
         #FIX 2
         #Comment last line of code and uncomment the one below:
         #username = request.session['username']
 
-        # FLAW 5
+        # FLAW 3
+        # A07:2021-Identification and Authentication Failures
         # Even if we fix the above flaw, this form is still vulnerable to a so-called replay
         # attack because of how the logout function on the bottom of this file was implemented.
         # Currently, the logout button just sets the logged_in value in request.session to False,
@@ -61,11 +46,9 @@ def blogPageView(request):
         # can copy the csrf token, session and sessionid values, and use a tool such as postman
         # to edit your blog. It sounds unlikely but I've personally used tools that didn't always
         # work when you clicked log out (I've noticed it was even happening to Facebook a few 
-        # years ago). For FIX 5 scroll to the bottom of this file to the logout function!
+        # years ago). For FIX 3 scroll to the bottom of this file to the logout function!
 
         blog = request.POST.get('blog', '')
-        print(f"Someone with a username '{username}' rewrote their blog with the following data:")
-        print(blog)
         con = sqlite3.connect("bloggify.sqlite")
         cur = con.cursor()
         query = "UPDATE users SET blog=? WHERE username=?"
@@ -89,7 +72,7 @@ def blogPageView(request):
         else:
             return HttpResponse(f"It seems that there's no blog associated with your credentials!")
     else:
-        return HttpResponse("You are not logged in. Go to /login")
+        return redirect('/home/')
     
 
 def homePageViewTemplateWithData(request):
@@ -102,8 +85,6 @@ def loginPageView(request):
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
         hashed_password = hash_password(password=password)
-        print(username)
-        print(password)
         con = sqlite3.connect("bloggify.sqlite")
         cur = con.cursor()
 
@@ -119,9 +100,7 @@ def loginPageView(request):
         #query = "SELECT username, blog FROM Users WHERE username=? AND password=?"
         #res = cur.execute(query, (username, password))
 
-
         result = res.fetchone()
-        print(f"result is {result}")
         con.close()
         if result:
             username, blog = result
@@ -130,7 +109,6 @@ def loginPageView(request):
             return redirect('/blog/')
         return render(request, 'pages/login.html')
     return render(request, 'pages/login.html')
-        #return HttpResponse('Hello Web!')
 
 def registerPageView(request):
     if request.session.get('logged_in'):
@@ -138,8 +116,8 @@ def registerPageView(request):
     if request.method == 'POST':
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
-        #FLAW 3
-        #A09:2021 – Security Logging and Monitoring Failures
+        #FLAW 5
+        #A09:2021 – Security Logging and Monitoring Failures or A05:2021-Security Misconfiguration
         #The application is not monitored for brute force.
         #Failed loggings and registering attempts are not logged.
         #If the form doesn't check if a username is already taken,
@@ -149,7 +127,7 @@ def registerPageView(request):
         # can be bruteforced using the login form, since there is no 
         # password policy!
 
-        #FIX 3
+        #FIX 5
         #Uncomment the below lines:
         #err = "Something is wrong with your password"
         #def check_password_strength(password):
@@ -169,10 +147,7 @@ def registerPageView(request):
         #if err:
             #return render(request, 'pages/register.html', {'err':err})
 
-
-        print(f"Someone registers with username '{username}' and password {password}.")
         hashed_password = hash_password(password)
-
         #We should also check if someone with that username already exists... is that another flaw?
         con = sqlite3.connect("bloggify.sqlite")
         cur = con.cursor()
@@ -188,12 +163,14 @@ def registerPageView(request):
     
 
 def logout(request):
-    what_was_there = request.session['items']
-    print(f"what_was_there: {what_was_there}")
-    
     request.session['logged_in'] = False
-    # FIX 5
-    # Uncomment the below line of code!
-    # This will remove the session data and prevent a replay attack
-    # request.session.flush()  
-    return render(request, 'pages/login.html')
+    response = render(request, 'pages/login.html')
+    
+    # FIX 3
+    # Uncomment the three lines of code below!
+    # This will remove the session data and csrftoken and prevent a replay attack
+    #request.session.flush() 
+    #rotate_token(request)
+    #response = render(request, 'pages/login.html')
+    
+    return response
