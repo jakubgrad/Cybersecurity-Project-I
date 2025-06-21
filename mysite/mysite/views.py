@@ -117,7 +117,7 @@ def registerPageView(request):
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
         #FLAW 5
-        #A09:2021 – Security Logging and Monitoring Failures or A05:2021-Security Misconfiguration
+        #A09:2021 – Security Logging and Monitoring Failures
         #The application is not monitored for brute force.
         #Failed loggings and registering attempts are not logged.
         #If the form doesn't check if a username is already taken,
