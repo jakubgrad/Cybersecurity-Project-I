@@ -5,6 +5,9 @@ from django.middleware.csrf import rotate_token
 import sqlite3
 import hashlib
 import pickle
+import logging
+
+logger = logging.getLogger("myapp")
 
 def hash_password(password):
     # FLAW 4
@@ -107,6 +110,31 @@ def loginPageView(request):
             request.session['username'] = username
             request.session['logged_in'] = True
             return redirect('/blog/')
+        #FLAW 5
+        #A09:2021 – Security Logging and Monitoring Failures
+        #The application does not generate log messages for any user activity.
+        #Here, if the username/password pair doesn't correspond to a record,
+        #the user is simply redirected to the login page.
+        #Failed login attempts are not logged to a file or to the console,
+        #hence the application isn't monitored for suspicious activity at all.
+        #A password could be bruteforced and administrators would never notice.
+
+        #FLAW 5 Fix:
+        #Log failed log-in attempts (other types of suspicious activity could also
+        #be logged, e.g. mass deletion of database records or unauthorized access)
+        #into a file so that the record of failed login attempts persists even if the
+        #process terminates. From the log it's possible to see what IP address carried
+        #out the failed logins and which user was the target. See the logging configuration
+        #at the bottom of settings.py for more details!
+        #Uncomment the following lines:
+        
+        # x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        # if x_forwarded_for:
+        #     ip = x_forwarded_for.split(',')[0]
+        # else:
+        #     ip = request.META.get('REMOTE_ADDR')
+        # logger.warning(f"Login attempt from IP {ip} for username  {username} failed")
+
         return render(request, 'pages/login.html')
     return render(request, 'pages/login.html')
 
@@ -116,36 +144,7 @@ def registerPageView(request):
     if request.method == 'POST':
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
-        #FLAW 5
-        #A09:2021 – Security Logging and Monitoring Failures
-        #The application is not monitored for brute force.
-        #Failed loggings and registering attempts are not logged.
-        #If the form doesn't check if a username is already taken,
-        # an adversary can use the register form to create a 
-        # username-password pair that they can log in with and 
-        # retrieve another users blog. Or, a password of another user
-        # can be bruteforced using the login form, since there is no 
-        # password policy!
-
-        #FIX 5
-        #Uncomment the below lines:
-        #err = "Something is wrong with your password"
-        #def check_password_strength(password):
-            #err = None
-            #if len(password) < 8:
-                #err = "Password is too short"
-            #if not any(char.isdigit() for char in password):
-                #err = "Password should have at least one number"
-            #if not any(char.isupper() for char in password):
-                #err="Password should have at least one uppercase letter"
-            #if not any(char.islower() for char in password):
-                #err="Password should have at least one lowercase letter"
-            #if not any(char in '!@#$%^&*()_+' for char in password):
-                #err="Password should have at least one special character"
-            #return err
-        #err = check_password_strength(password=password)
-        #if err:
-            #return render(request, 'pages/register.html', {'err':err})
+        
 
         hashed_password = hash_password(password)
         #We should also check if someone with that username already exists... is that another flaw?
