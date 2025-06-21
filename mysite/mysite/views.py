@@ -113,19 +113,15 @@ def loginPageView(request):
         #FLAW 5
         #A09:2021 – Security Logging and Monitoring Failures
         #The application does not generate log messages for any user activity.
-        #Here, if the username/password pair doesn't correspond to a record,
-        #the user is simply redirected to the login page.
         #Failed login attempts are not logged to a file or to the console,
-        #hence the application isn't monitored for suspicious activity at all.
-        #A password could be bruteforced and administrators would never notice.
+        #and the application isn't monitored for suspicious activity at all.
+        #A bruteforce attack would go unnoticed by the administrators
 
         #FLAW 5 Fix:
-        #Log failed log-in attempts (other types of suspicious activity could also
-        #be logged, e.g. mass deletion of database records or unauthorized access)
-        #into a file so that the record of failed login attempts persists even if the
-        #process terminates. From the log it's possible to see what IP address carried
+        #Log failed log-in attempts into a file so that the record of failed login 
+        # attempts persists. From the log it's possible to see what IP address carried
         #out the failed logins and which user was the target. See the logging configuration
-        #at the bottom of settings.py for more details!
+        #at the bottom of settings.py for more details! The logs go into the file warnings.log.
         #Uncomment the following lines:
         
         # x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
